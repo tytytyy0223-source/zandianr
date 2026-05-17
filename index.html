@@ -124,6 +124,7 @@ if(/股票|炒股|比特币|虚拟[货币]|杠杆|期货|合约|暴[富涨]|翻�
 if(/同学.*买.*基金|朋友.*理财|别人.*赚|跟风|推荐.*理财|买什么|投什么/.test(t))return"risk";
 if(/建议|怎么办|咋办|帮帮|不知道|迷茫|焦虑|压力|纠结/.test(t))return"advice";
 if(/(你好|嗨|hello|hi|在吗|你是谁|介绍)[？?！!。.]?$/i.test(t))return"greet";
+if(/\d+/.test(t)){var allKws=[];for(var ck in CAT_SUBS){CAT_SUBS[ck].forEach(function(k){allKws.push(k)})}if(allKws.some(function(k){return t.includes(k)}))return"record"}
 return"chat"};
 const matchCat=(text)=>{const t=text.toLowerCase();for(const[cat,kws]of Object.entries(CAT_SUBS)){if(kws.some(k=>t.includes(k)))return cat}return"other"};
 const parseAmount=(text)=>{const m=text.match(/(\d+\.?\d*)\s*(元|块|￥|¥)?/);return m?parseFloat(m[1]):0};
@@ -341,9 +342,10 @@ return <div className="page anim-fade">
 </div>};
 
 /* ===== CHAT PAGE ===== */
-const ChatPage=({records,setRecords,goals,onOpenWizard})=>{const[msgs,setMsgs]=useState([]);const[input,setInput]=useState("");const bottomRef=useRef(null);const inited=useRef(false);
+const ChatPage=({records,setRecords,goals,onOpenWizard,wizardResult,clearWizardResult})=>{const[msgs,setMsgs]=useState([]);const[input,setInput]=useState("");const bottomRef=useRef(null);const inited=useRef(false);
 useEffect(()=>{if(!inited.current){inited.current=true;const greeting=getProactiveGreeting(records,goals);setMsgs([{role:"ai",text:greeting}])}},[]);
 useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"})},[msgs]);
+useEffect(()=>{if(wizardResult){const tip=getPostRecordTip(wizardResult.cat,wizardResult.amount);setMsgs(prev=>[...prev,{role:"ai",text:"已帮你记录这笔支出！",card:"record",cardData:{type:"expense",amount:wizardResult.amount,cat:wizardResult.cat,note:wizardResult.note||CAT_NAMES[wizardResult.cat]},postTip:tip}]);clearWizardResult()}},[wizardResult]);
 
 const handleSend=()=>{const t=input.trim();if(!t)return;setInput("");const intent=detectIntent(t);const reply=genReply(t,intent,records,goals);const newMsgs=[...msgs,{role:"user",text:t},{role:"ai",text:reply.text,card:reply.card,cardData:reply.data,postTip:reply.postTip}];
 if(reply.card==="record"&&reply.data){const nr={id:Date.now(),type:"expense",amount:reply.data.amount,cat:reply.data.cat,note:reply.data.note,date:new Date().toISOString().slice(0,10)};setRecords(prev=>[nr,...prev])}
@@ -420,16 +422,16 @@ const Onboarding=({onDone})=>{const[step,setStep]=useState(0);const steps=[{emoj
 return <div className="onboarding anim-fade"><div style={{fontSize:64,marginBottom:24}}>{s.emoji}</div><h2 style={{fontSize:22,marginBottom:12}}>{s.title}</h2><p style={{color:"var(--sub)",textAlign:"center",lineHeight:1.8,maxWidth:280,marginBottom:32}}>{s.desc}</p><div style={{display:"flex",gap:6,marginBottom:24}}>{steps.map((_,i)=><div key={i} style={{width:i===step?24:8,height:8,borderRadius:4,background:i===step?"var(--pri)":"#ddd",transition:"all .3s"}}/>)}</div>{step<steps.length-1?<button className="btn btn-pri" style={{minWidth:160}} onClick={()=>setStep(step+1)}>下一步</button>:<button className="btn btn-pri" style={{minWidth:160}} onClick={onDone}>开始使用 🚀</button>}</div>};
 
 /* ===== APP ===== */
-const App=()=>{const[boarded,setBoarded]=useState(()=>localStorage.getItem("zd_boarded")==="1");const[tab,setTab]=useState("home");const[records,setRecords]=useState(INIT_RECORDS);const[goals,setGoals]=useState(INIT_GOALS);const[showWizard,setShowWizard]=useState(false);
+const App=()=>{const[boarded,setBoarded]=useState(()=>localStorage.getItem("zd_boarded")==="1");const[tab,setTab]=useState("home");const[records,setRecords]=useState(INIT_RECORDS);const[goals,setGoals]=useState(INIT_GOALS);const[showWizard,setShowWizard]=useState(false);const[wizardResult,setWizardResult]=useState(null);
 const handleBoard=()=>{localStorage.setItem("zd_boarded","1");setBoarded(true)};
 
-const handleWizardConfirm=(data)=>{const nr={id:Date.now(),type:"expense",amount:data.amount,cat:data.cat,note:data.note,date:new Date().toISOString().slice(0,10)};setRecords(prev=>[nr,...prev]);setShowWizard(false)};
+const handleWizardConfirm=(data)=>{const nr={id:Date.now(),type:"expense",amount:data.amount,cat:data.cat,note:data.note,date:new Date().toISOString().slice(0,10)};setRecords(prev=>[nr,...prev]);setShowWizard(false);setWizardResult(data);setTab("chat")};
 
 if(!boarded)return <Onboarding onDone={handleBoard}/>;
 
 return <div>
 {tab==="home"&&<HomePage records={records} goals={goals} setTab={setTab} onOpenWizard={()=>setShowWizard(true)}/>}
-{tab==="chat"&&<ChatPage records={records} setRecords={setRecords} goals={goals} onOpenWizard={()=>setShowWizard(true)}/>}
+{tab==="chat"&&<ChatPage records={records} setRecords={setRecords} goals={goals} onOpenWizard={()=>setShowWizard(true)} wizardResult={wizardResult} clearWizardResult={()=>setWizardResult(null)}/>}
 {tab==="ledger"&&<LedgerPage records={records}/>}
 {tab==="goal"&&<GoalPage goals={goals} setGoals={setGoals}/>}
 {tab==="learn"&&<LearnPage setTab={setTab}/>}
