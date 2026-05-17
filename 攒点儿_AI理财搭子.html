@@ -175,35 +175,59 @@ return <div className="msg-card anim-fade"><div style={{fontWeight:700,marginBot
 
 const RiskWarningCard=()=><div className="msg-card anim-fade" style={{borderLeft:"3px solid var(--red)"}}><div style={{fontWeight:700,color:"var(--red)",marginBottom:8}}>⚠️ 高风险警示</div><div style={{fontSize:13,lineHeight:1.8}}>🚫 <b>不借钱投资</b> — 铁律中的铁律<br/>🚫 <b>不碰不懂的产品</b> — 看不懂就不投<br/>🚫 <b>警惕稳赚不赔</b> — 高收益=高风险<br/>🚫 <b>远离非法平台</b> — 只用正规持牌机构<br/><br/>建议先去「学堂」学习基础知识～</div></div>;
 
+/* ===== 收入分类 ===== */
+const INCOME_CATS=[{key:"allowance",emoji:"\uD83D\uDCB0",name:"生活费"},{key:"parttime",emoji:"\uD83D\uDCBC",name:"兼职"},{key:"scholarship",emoji:"\uD83C\uDFC6",name:"奖学金"},{key:"redpacket",emoji:"\uD83E\uDDE7",name:"红包"},{key:"reimburse",emoji:"\uD83D\uDCCB",name:"报销"},{key:"invest_income",emoji:"\uD83D\uDCC8",name:"理财收益"},{key:"other_income",emoji:"\uD83D\uDCE6",name:"其他收入"}];
+const INCOME_NAMES={};INCOME_CATS.forEach(function(c){INCOME_NAMES[c.key]=c.name});
+const INCOME_EMOJI={};INCOME_CATS.forEach(function(c){INCOME_EMOJI[c.key]=c.emoji});
+const INCOME_COLORS={allowance:"#00b894",parttime:"#0984e3",scholarship:"#6C5CE7",redpacket:"#d63031",reimburse:"#e17055",invest_income:"#fdcb6e",other_income:"#636e72"};
+
 /* ===== 分步记账组件 RecordWizard ===== */
 const RecordWizard=({onConfirm,onClose})=>{
+const[recType,setRecType]=useState("expense");
 const[step,setStep]=useState(1);
 const[selCat,setSelCat]=useState(null);
 const[note,setNote]=useState("");
 const[amount,setAmount]=useState("");
 
-const stepNames=["选分类","填备注","输金额","确认"];
+const isIncome=recType==="income";
+const stepNames=isIncome?["选来源","填备注","输金额","确认"]:["选分类","填备注","输金额","确认"];
 const dots=stepNames.map((_,i)=>i+1);
+const catList=isIncome?INCOME_CATS:ALL_CATS;
+const catNames=isIncome?INCOME_NAMES:CAT_NAMES;
+const catEmoji=isIncome?INCOME_EMOJI:CAT_EMOJI;
+const catColors=isIncome?INCOME_COLORS:CAT_COLORS;
+const accentColor=isIncome?"var(--green)":"var(--red)";
 
-const handleConfirm=()=>{if(!selCat||!amount)return;onConfirm({cat:selCat,note:note||CAT_NAMES[selCat],amount:parseFloat(amount)});};
+const handleTypeSwitch=(t)=>{if(t===recType)return;setRecType(t);setStep(1);setSelCat(null);setNote("");setAmount("")};
+
+const handleConfirm=()=>{if(!selCat||!amount)return;onConfirm({type:recType,cat:selCat,note:note||(isIncome?INCOME_NAMES[selCat]:CAT_NAMES[selCat]),amount:parseFloat(amount)});};
+
+const incomePlaceholders={allowance:"爸妈打的生活费",parttime:"家教/外卖/实习",scholarship:"国奖/校奖",redpacket:"微信/支付宝红包",reimburse:"报销到账",invest_income:"基金/余额宝收益",other_income:"其他来源"};
 
 return <div className="overlay" onClick={e=>{if(e.target===e.currentTarget)onClose()}}><div className="sheet" onClick={e=>e.stopPropagation()}>
-{/* 顶部标题 + 步骤指示 */}
-<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+{/* 顶部标题 + 收支切换 */}
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
 <span style={{fontWeight:700,fontSize:17}}>记一笔</span>
 <span onClick={onClose} style={{cursor:"pointer",fontSize:20,color:"var(--sub)",padding:"0 4px"}}>✕</span>
 </div>
+
+{/* 收支Tab切换 */}
+<div style={{display:"flex",gap:0,marginBottom:12,background:"#f0f0f0",borderRadius:12,padding:3}}>
+<div onClick={()=>handleTypeSwitch("expense")} style={{flex:1,textAlign:"center",padding:"8px 0",borderRadius:10,fontSize:14,fontWeight:600,cursor:"pointer",transition:"all .2s",background:recType==="expense"?"#fff":"transparent",color:recType==="expense"?"var(--red)":"var(--sub)",boxShadow:recType==="expense"?"0 1px 4px rgba(0,0,0,.1)":"none"}}>支出</div>
+<div onClick={()=>handleTypeSwitch("income")} style={{flex:1,textAlign:"center",padding:"8px 0",borderRadius:10,fontSize:14,fontWeight:600,cursor:"pointer",transition:"all .2s",background:recType==="income"?"#fff":"transparent",color:recType==="income"?"var(--green)":"var(--sub)",boxShadow:recType==="income"?"0 1px 4px rgba(0,0,0,.1)":"none"}}>收入</div>
+</div>
+
 <div className="wizard-step">
 {dots.map(d=><React.Fragment key={d}><div className={"dot "+(d<step?"done":d===step?"active":"todo")}/><span style={{fontSize:11,color:d===step?"var(--pri)":"var(--sub)"}}>{stepNames[d-1]}</span>{d<4&&<div style={{flex:1,height:1,background:d<step?"var(--green)":"#eee"}}/>}</React.Fragment>)}
 </div>
 
-{/* Step 1: 选分类 */}
+{/* Step 1: 选分类/来源 */}
 {step===1&&<div className="anim-fade">
-<div style={{fontSize:14,fontWeight:600,marginBottom:8}}>选择消费分类</div>
-<div className="cat-grid">
-{ALL_CATS.map(c=><div key={c.key} className={"cat-btn"+(selCat===c.key?" sel":"")} onClick={()=>{setSelCat(c.key);setTimeout(()=>setStep(2),200)}} style={selCat===c.key?{borderColor:CAT_COLORS[c.key],background:CAT_COLORS[c.key]+"12"}:{}}>
+<div style={{fontSize:14,fontWeight:600,marginBottom:8}}>{isIncome?"选择收入来源":"选择消费分类"}</div>
+<div className="cat-grid" style={isIncome?{gridTemplateColumns:"repeat(4,1fr)"}:{}}>
+{catList.map(c=><div key={c.key} className={"cat-btn"+(selCat===c.key?" sel":"")} onClick={()=>{setSelCat(c.key);setTimeout(()=>setStep(2),200)}} style={selCat===c.key?{borderColor:catColors[c.key],background:catColors[c.key]+"12"}:{}}>
 <span className="cemoji">{c.emoji}</span>
-<span style={{color:selCat===c.key?CAT_COLORS[c.key]:"var(--txt)"}}>{c.name}</span>
+<span style={{color:selCat===c.key?catColors[c.key]:"var(--txt)"}}>{c.name}</span>
 </div>)}
 </div>
 </div>}
@@ -212,10 +236,10 @@ return <div className="overlay" onClick={e=>{if(e.target===e.currentTarget)onClo
 {step===2&&<div className="anim-fade">
 <div style={{fontSize:14,fontWeight:600,marginBottom:8}}>填写备注 <span style={{fontWeight:400,fontSize:12,color:"var(--sub)"}}>(可选)</span></div>
 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,padding:"10px 14px",background:"var(--bg)",borderRadius:12}}>
-<span style={{fontSize:22}}>{CAT_EMOJI[selCat]}</span>
-<span style={{fontWeight:600,color:CAT_COLORS[selCat]}}>{CAT_NAMES[selCat]}</span>
+<span style={{fontSize:22}}>{catEmoji[selCat]}</span>
+<span style={{fontWeight:600,color:catColors[selCat]}}>{catNames[selCat]}</span>
 </div>
-<input value={note} onChange={e=>setNote(e.target.value)} placeholder={"例如："+({dining:"食堂午餐",transport:"地铁通勤",shopping:"淘宝日用品",study:"网课会员",social:"同学聚餐",housing:"月租水电",medical:"买感冒药",clothing:"买了件T恤",travel:"周末郊游",digital:"买了个充电器",beauty:"理发",other:"快递费"}[selCat]||"简单记一下")} style={{width:"100%",padding:"12px 14px",borderRadius:12,border:"1.5px solid #e0e0e0",fontSize:14,outline:"none"}} autoFocus/>
+<input value={note} onChange={e=>setNote(e.target.value)} placeholder={"例如："+(isIncome?(incomePlaceholders[selCat]||"简单记一下"):({dining:"食堂午餐",transport:"地铁通勤",shopping:"淘宝日用品",study:"网课会员",social:"同学聚餐",housing:"月租水电",medical:"买感冒药",clothing:"买了件T恤",travel:"周末郊游",digital:"买了个充电器",beauty:"理发",other:"快递费"}[selCat]||"简单记一下"))} style={{width:"100%",padding:"12px 14px",borderRadius:12,border:"1.5px solid #e0e0e0",fontSize:14,outline:"none"}} autoFocus/>
 <div style={{display:"flex",gap:8,marginTop:14}}>
 <button className="btn btn-ghost" onClick={()=>setStep(1)}>上一步</button>
 <button className="btn btn-pri" style={{flex:1}} onClick={()=>setStep(3)}>下一步</button>
@@ -226,15 +250,15 @@ return <div className="overlay" onClick={e=>{if(e.target===e.currentTarget)onClo
 {step===3&&<div className="anim-fade">
 <div style={{fontSize:14,fontWeight:600,marginBottom:8}}>输入金额</div>
 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,padding:"10px 14px",background:"var(--bg)",borderRadius:12}}>
-<span style={{fontSize:18}}>{CAT_EMOJI[selCat]}</span>
-<span style={{fontSize:13}}>{CAT_NAMES[selCat]}{note?" · "+note:""}</span>
+<span style={{fontSize:18}}>{catEmoji[selCat]}</span>
+<span style={{fontSize:13}}>{catNames[selCat]}{note?" · "+note:""}</span>
 </div>
 <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:14}}>
-<span style={{fontSize:28,fontWeight:700,color:"var(--red)"}}>¥</span>
+<span style={{fontSize:28,fontWeight:700,color:isIncome?"var(--green)":"var(--red)"}}>¥</span>
 <input type="number" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="0.00" style={{flex:1,fontSize:32,fontWeight:700,border:"none",outline:"none",background:"transparent",color:"var(--txt)"}} autoFocus/>
 </div>
 <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
-{[5,10,15,20,30,50,100,200].map(a=><span key={a} className="chip" onClick={()=>setAmount(String(a))} style={amount===String(a)?{background:"var(--pri)",color:"#fff"}:{}}>¥{a}</span>)}
+{(isIncome?[100,200,500,1000,1500,2000,3000,5000]:[5,10,15,20,30,50,100,200]).map(a=><span key={a} className="chip" onClick={()=>setAmount(String(a))} style={amount===String(a)?{background:isIncome?"var(--green)":"var(--pri)",color:"#fff"}:{}}>¥{a}</span>)}
 </div>
 <div style={{display:"flex",gap:8}}>
 <button className="btn btn-ghost" onClick={()=>setStep(2)}>上一步</button>
@@ -244,21 +268,21 @@ return <div className="overlay" onClick={e=>{if(e.target===e.currentTarget)onClo
 
 {/* Step 4: 确认 */}
 {step===4&&<div className="anim-fade">
-<div style={{fontSize:14,fontWeight:600,marginBottom:8}}>确认记账信息</div>
+<div style={{fontSize:14,fontWeight:600,marginBottom:8}}>{isIncome?"确认收入信息":"确认记账信息"}</div>
 <div className="confirm-card">
 <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
-<div style={{width:48,height:48,borderRadius:14,background:CAT_COLORS[selCat]+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26}}>{CAT_EMOJI[selCat]}</div>
+<div style={{width:48,height:48,borderRadius:14,background:(catColors[selCat]||"#ccc")+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26}}>{catEmoji[selCat]}</div>
 <div style={{flex:1}}>
-<div style={{fontWeight:700,fontSize:15}}>{CAT_NAMES[selCat]}</div>
+<div style={{fontWeight:700,fontSize:15}}>{catNames[selCat]}</div>
 <div style={{fontSize:12,color:"var(--sub)",marginTop:2}}>{note||"无备注"}</div>
 </div>
-<div style={{fontWeight:700,fontSize:22,color:"var(--red)"}}>¥{parseFloat(amount||0).toFixed(2)}</div>
+<div style={{fontWeight:700,fontSize:22,color:isIncome?"var(--green)":"var(--red)"}}>{isIncome?"+":"-"}¥{parseFloat(amount||0).toFixed(2)}</div>
 </div>
-<div style={{fontSize:12,color:"var(--sub)"}}>日期：{new Date().toISOString().slice(0,10)}</div>
+<div style={{fontSize:12,color:"var(--sub)"}}>日期：{new Date().toISOString().slice(0,10)} · {isIncome?"收入":"支出"}</div>
 </div>
 <div style={{display:"flex",gap:8}}>
 <button className="btn btn-ghost" onClick={()=>setStep(3)}>返回修改</button>
-<button className="btn btn-green" style={{flex:1}} onClick={handleConfirm}>✓ 确认记账</button>
+<button className="btn btn-green" style={{flex:1}} onClick={handleConfirm}>{isIncome?"✓ 确认收入":"✓ 确认记账"}</button>
 </div>
 </div>}
 
@@ -345,7 +369,7 @@ return <div className="page anim-fade">
 const ChatPage=({records,setRecords,goals,onOpenWizard,wizardResult,clearWizardResult})=>{const[msgs,setMsgs]=useState([]);const[input,setInput]=useState("");const bottomRef=useRef(null);const inited=useRef(false);
 useEffect(()=>{if(!inited.current){inited.current=true;const greeting=getProactiveGreeting(records,goals);setMsgs([{role:"ai",text:greeting}])}},[]);
 useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"})},[msgs]);
-useEffect(()=>{if(wizardResult){const tip=getPostRecordTip(wizardResult.cat,wizardResult.amount);setMsgs(prev=>[...prev,{role:"ai",text:"已帮你记录这笔支出！",card:"record",cardData:{type:"expense",amount:wizardResult.amount,cat:wizardResult.cat,note:wizardResult.note||CAT_NAMES[wizardResult.cat]},postTip:tip}]);clearWizardResult()}},[wizardResult]);
+useEffect(()=>{if(wizardResult){const isInc=wizardResult.type==="income";const catNames=isInc?INCOME_NAMES:CAT_NAMES;const tip=isInc?("收入已到账，继续攒钱吧！当前收入来源："+((INCOME_NAMES[wizardResult.cat])||"收入")):getPostRecordTip(wizardResult.cat,wizardResult.amount);setMsgs(prev=>[...prev,{role:"ai",text:isInc?"已帮你记录这笔收入！💰":"已帮你记录这笔支出！",card:isInc?"income":"record",cardData:{type:isInc?"income":"expense",amount:wizardResult.amount,cat:wizardResult.cat,note:wizardResult.note||(catNames[wizardResult.cat]||"记录")},postTip:tip}]);clearWizardResult()}},[wizardResult]);
 
 const handleSend=()=>{const t=input.trim();if(!t)return;setInput("");const intent=detectIntent(t);const reply=genReply(t,intent,records,goals);const newMsgs=[...msgs,{role:"user",text:t},{role:"ai",text:reply.text,card:reply.card,cardData:reply.data,postTip:reply.postTip}];
 if(reply.card==="record"&&reply.data){const nr={id:Date.now(),type:"expense",amount:reply.data.amount,cat:reply.data.cat,note:reply.data.note,date:new Date().toISOString().slice(0,10)};setRecords(prev=>[nr,...prev])}
@@ -366,7 +390,8 @@ return <div className="chat-wrap"><div className="chat-msgs">{msgs.map((m,i)=><R
 
 /* ===== LEDGER PAGE ===== */
 const LedgerPage=({records})=>{const[filter,setFilter]=useState("all");const filtered=filter==="all"?records:records.filter(r=>r.type===filter);
-return <div className="page anim-fade"><h2 style={{fontSize:18,marginBottom:12}}>账本明细</h2><div style={{display:"flex",gap:8,marginBottom:14}}>{[["all","全部"],["expense","支出"],["income","收入"]].map(([k,v])=><span key={k} className={"chip"+(filter===k?" active":"")} onClick={()=>setFilter(k)}>{v}</span>)}</div>{filtered.length===0?<div style={{textAlign:"center",color:"var(--sub)",padding:40}}>暂无记录～<br/>去跟攒攒对话记一笔吧</div>:filtered.map(r=><div key={r.id} className="card" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:14}}><div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:20}}>{r.type==="income"?"💰":(CAT_EMOJI[r.cat]||"📦")}</span><div><div style={{fontWeight:600,fontSize:14}}>{r.note}</div><div style={{fontSize:11,color:"var(--sub)",marginTop:2}}>{r.date} · {r.type==="income"?"收入":CAT_NAMES[r.cat]||"其他"}</div></div></div><div style={{fontWeight:700,fontSize:16,color:r.type==="income"?"var(--green)":"var(--red)"}}>{r.type==="income"?"+":"-"}{r.amount}</div></div>)}</div>};
+const getRecEmoji=(r)=>{if(r.type==="income")return INCOME_EMOJI[r.cat]||"💰";return CAT_EMOJI[r.cat]||"📦"};const getRecCatName=(r)=>{if(r.type==="income")return INCOME_NAMES[r.cat]||"收入";return CAT_NAMES[r.cat]||"其他"};
+return <div className="page anim-fade"><h2 style={{fontSize:18,marginBottom:12}}>账本明细</h2><div style={{display:"flex",gap:8,marginBottom:14}}>{[["all","全部"],["expense","支出"],["income","收入"]].map(([k,v])=><span key={k} className={"chip"+(filter===k?" active":"")} onClick={()=>setFilter(k)}>{v}</span>)}</div>{filtered.length===0?<div style={{textAlign:"center",color:"var(--sub)",padding:40}}>暂无记录～<br/>去跟攒攒对话记一笔吧</div>:filtered.map(r=><div key={r.id} className="card" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:14}}><div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:20}}>{getRecEmoji(r)}</span><div><div style={{fontWeight:600,fontSize:14}}>{r.note}</div><div style={{fontSize:11,color:"var(--sub)",marginTop:2}}>{r.date} · {getRecCatName(r)}</div></div></div><div style={{fontWeight:700,fontSize:16,color:r.type==="income"?"var(--green)":"var(--red)"}}>{r.type==="income"?"+":"-"}{r.amount}</div></div>)}</div>};
 
 /* ===== GOAL PAGE (含攒钱日历) ===== */
 const GoalPage=({goals,setGoals})=>{const[showAdd,setShowAdd]=useState(false);const[newName,setNewName]=useState("");const[newTarget,setNewTarget]=useState("");const emojis=["🎯","📱","✈️","🎮","💻","👟","📸","🎸","🏠","🎓"];const[selEmoji,setSelEmoji]=useState("🎯");const[expandCal,setExpandCal]=useState(null);
@@ -425,7 +450,7 @@ return <div className="onboarding anim-fade"><div style={{fontSize:64,marginBott
 const App=()=>{const[boarded,setBoarded]=useState(()=>localStorage.getItem("zd_boarded")==="1");const[tab,setTab]=useState("home");const[records,setRecords]=useState(INIT_RECORDS);const[goals,setGoals]=useState(INIT_GOALS);const[showWizard,setShowWizard]=useState(false);const[wizardResult,setWizardResult]=useState(null);
 const handleBoard=()=>{localStorage.setItem("zd_boarded","1");setBoarded(true)};
 
-const handleWizardConfirm=(data)=>{const nr={id:Date.now(),type:"expense",amount:data.amount,cat:data.cat,note:data.note,date:new Date().toISOString().slice(0,10)};setRecords(prev=>[nr,...prev]);setShowWizard(false);setWizardResult(data);setTab("chat")};
+const handleWizardConfirm=(data)=>{const isInc=data.type==="income";const nr={id:Date.now(),type:isInc?"income":"expense",amount:data.amount,cat:isInc?(data.cat||"income"):data.cat,note:data.note,date:new Date().toISOString().slice(0,10)};setRecords(prev=>[nr,...prev]);setShowWizard(false);setWizardResult(data);setTab("chat")};
 
 if(!boarded)return <Onboarding onDone={handleBoard}/>;
 
